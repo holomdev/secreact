@@ -203,7 +203,10 @@ app.patch('/api/user-role', async (req, res) => {
 
 app.get('/api/inventory', checkJwt, requiredAdmin, async (req, res) => {
   try {
-    const inventoryItems = await InventoryItem.find();
+    const {sub} = req.user;
+    const inventoryItems = await InventoryItem.find({
+      user: sub
+    });
     res.json(inventoryItems);
   } catch (err) {
     return res.status(400).json({error: err});
@@ -212,7 +215,11 @@ app.get('/api/inventory', checkJwt, requiredAdmin, async (req, res) => {
 
 app.post('/api/inventory', checkJwt, requiredAdmin, async (req, res) => {
   try {
-    const inventoryItem = new InventoryItem(req.body);
+    const {sub} = req.user;
+    const input = Object.assign({}, req.body, {
+      user: sub
+    })
+    const inventoryItem = new InventoryItem(input);
     await inventoryItem.save();
     res.status(201).json({
       message: 'Inventory item created!',
@@ -228,8 +235,9 @@ app.post('/api/inventory', checkJwt, requiredAdmin, async (req, res) => {
 
 app.delete('/api/inventory/:id', checkJwt, requiredAdmin, async (req, res) => {
   try {
+    const {sub} = req.user;
     const deletedItem = await InventoryItem.findOneAndDelete(
-      {_id: req.params.id}
+      {_id: req.params.id, user: sub}
     );
     res.status(201).json({
       message: 'Inventory item deleted!',
