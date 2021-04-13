@@ -4,6 +4,7 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 const jwtDecode = require('jwt-decode');
 const mongoose = require('mongoose');
+const jwt = require('express-jwt');
 
 const dashboardData = require('./data/dashboard');
 const User = require('./data/User');
@@ -18,12 +19,12 @@ const {
 const app = express();
 
 app.use(cors());
-app.use(bodyParser.urlencoded({ extended: false }));
+app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
 
 app.post('/api/authenticate', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const {email, password} = req.body;
 
     const user = await User.findOne({
       email
@@ -41,8 +42,8 @@ app.post('/api/authenticate', async (req, res) => {
     );
 
     if (passwordValid) {
-      const { password, bio, ...rest } = user;
-      const userInfo = Object.assign({}, { ...rest });
+      const {password, bio, ...rest} = user;
+      const userInfo = Object.assign({}, {...rest});
 
       const token = createToken(userInfo);
 
@@ -64,13 +65,13 @@ app.post('/api/authenticate', async (req, res) => {
     console.log(err);
     return res
       .status(400)
-      .json({ message: 'Something went wrong.' });
+      .json({message: 'Something went wrong.'});
   }
 });
 
 app.post('/api/signup', async (req, res) => {
   try {
-    const { email, firstName, lastName } = req.body;
+    const {email, firstName, lastName} = req.body;
 
     const hashedPassword = await hashPassword(
       req.body.password
@@ -91,7 +92,7 @@ app.post('/api/signup', async (req, res) => {
     if (existingEmail) {
       return res
         .status(400)
-        .json({ message: 'Email already exists' });
+        .json({message: 'Email already exists'});
     }
 
     const newUser = new User(userData);
@@ -134,30 +135,36 @@ app.post('/api/signup', async (req, res) => {
   }
 });
 
-app.get('/api/dashboard-data', (req, res) =>
+const checkJwt = jwt({
+  secret: process.env.JWT_SECRET,
+  issuer: 'api.orbit',
+  audience: 'api.orbit'
+})
+
+app.get('/api/dashboard-data', checkJwt, (req, res) =>
   res.json(dashboardData)
 );
 
 app.patch('/api/user-role', async (req, res) => {
   try {
-    const { role } = req.body;
+    const {role} = req.body;
     const allowedRoles = ['user', 'admin'];
 
     if (!allowedRoles.includes(role)) {
       return res
         .status(400)
-        .json({ message: 'Role not allowed' });
+        .json({message: 'Role not allowed'});
     }
     await User.findOneAndUpdate(
-      { _id: req.user.sub },
-      { role }
+      {_id: req.user.sub},
+      {role}
     );
     res.json({
       message:
         'User role updated. You must log in again for the changes to take effect.'
     });
   } catch (err) {
-    return res.status(400).json({ error: err });
+    return res.status(400).json({error: err});
   }
 });
 
@@ -166,7 +173,7 @@ app.get('/api/inventory', async (req, res) => {
     const inventoryItems = await InventoryItem.find();
     res.json(inventoryItems);
   } catch (err) {
-    return res.status(400).json({ error: err });
+    return res.status(400).json({error: err});
   }
 });
 
@@ -189,7 +196,7 @@ app.post('/api/inventory', async (req, res) => {
 app.delete('/api/inventory/:id', async (req, res) => {
   try {
     const deletedItem = await InventoryItem.findOneAndDelete(
-      { _id: req.params.id }
+      {_id: req.params.id}
     );
     res.status(201).json({
       message: 'Inventory item deleted!',
@@ -220,7 +227,7 @@ app.get('/api/users', async (req, res) => {
 
 app.get('/api/bio', async (req, res) => {
   try {
-    const { sub } = req.user;
+    const {sub} = req.user;
     const user = await User.findOne({
       _id: sub
     })
@@ -239,8 +246,8 @@ app.get('/api/bio', async (req, res) => {
 
 app.patch('/api/bio', async (req, res) => {
   try {
-    const { sub } = req.user;
-    const { bio } = req.body;
+    const {sub} = req.user;
+    const {bio} = req.body;
     const updatedUser = await User.findOneAndUpdate(
       {
         _id: sub
