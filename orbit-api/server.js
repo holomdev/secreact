@@ -174,7 +174,6 @@ const requiredAdmin = (req, res, next) => {
 }
 
 app.get('/api/dashboard-data', checkJwt, (req, res) => {
-  console.log(req.user);
   return res.json(dashboardData)
 });
 
